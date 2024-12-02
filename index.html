@@ -1,0 +1,509 @@
+<html><head><base href="." /><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Grabador de Pantalla Web</title>
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background: #1a1a1a;
+    color: #fff;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.container {
+    max-width: 800px;
+    margin: 2rem auto;
+    text-align: center;
+    padding: 1rem;
+}
+
+.buttons {
+    margin: 2rem 0;
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+button {
+    padding: 1rem 2rem;
+    font-size: 1.1rem;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: #2196f3;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(33, 150, 243, 0.3);
+}
+
+button:disabled {
+    background: #666;
+    cursor: not-allowed;
+}
+
+.recording {
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+#videoPlayer {
+    max-width: 100%;
+    margin-top: 2rem;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    display: none;
+}
+
+.status {
+    margin-top: 1rem;
+    font-size: 1.1rem;
+    color: #4CAF50;
+}
+
+.icon {
+    width: 24px;
+    height: 24px;
+    fill: currentColor;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.8);
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: #2a2a2a;
+    padding: 2rem;
+    border-radius: 10px;
+    max-width: 500px;
+    width: 90%;
+}
+
+.modal-content h2 {
+    margin-bottom: 1rem;
+}
+
+.option-group {
+    margin: 1rem 0;
+    text-align: left;
+}
+
+select {
+    width: 100%;
+    padding: 0.5rem;
+    margin: 0.5rem 0;
+    background: #333;
+    color: white;
+    border: 1px solid #444;
+    border-radius: 5px;
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.webcam-preview {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 240px;
+    height: 180px;
+    border-radius: 10px;
+    z-index: 2147483647; /* Maximum z-index value to ensure it stays on top */
+    display: none;
+    background: #000; /* Add background color */
+    border: 2px solid #2196f3; /* Add border for better visibility */
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5); /* Add shadow for better visibility */
+}
+</style>
+</head>
+<body>
+    <div class="container">
+        <h1>Grabador de Pantalla Web</h1>
+        <p>Graba tu pantalla fácilmente y descarga el video en formato WebM</p>
+        
+        <div class="buttons">
+            <button id="startBtn">
+                <svg class="icon" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="8" fill="currentColor"/>
+                </svg>
+                Iniciar Grabación
+            </button>
+            <button id="stopBtn" disabled>
+                <svg class="icon" viewBox="0 0 24 24">
+                    <rect x="6" y="6" width="12" height="12" fill="currentColor"/>
+                </svg>
+                Detener Grabación
+            </button>
+            <button id="downloadBtn" disabled>
+                <svg class="icon" viewBox="0 0 24 24">
+                    <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="currentColor"/>
+                </svg>
+                Descargar Video
+            </button>
+        </div>
+        
+        <div id="status" class="status"></div>
+        <video id="videoPlayer" controls></video>
+    </div>
+
+    <div id="recordingModal" class="modal">
+        <div class="modal-content">
+            <h2>Opciones de Grabación</h2>
+            <div class="option-group">
+                <label>
+                    <input type="checkbox" id="enableAudio" checked>
+                    Incluir audio del micrófono
+                </label>
+            </div>
+            <div class="option-group">
+                <label>
+                    <input type="checkbox" id="enableWebcam" checked>
+                    Mostrar webcam
+                </label>
+            </div>
+            <div class="option-group">
+                <label>Seleccionar micrófono:</label>
+                <select id="microphoneSelect" disabled>
+                    <option value="">Cargando micrófonos...</option>
+                </select>
+            </div>
+            <div class="option-group">
+                <label>Seleccionar cámara:</label>
+                <select id="webcamSelect" disabled>
+                    <option value="">Cargando cámaras...</option>
+                </select>
+            </div>
+            <div class="modal-buttons">
+                <button id="cancelRecording">Cancelar</button>
+                <button id="startRecording">Iniciar Grabación</button>
+            </div>
+        </div>
+    </div>
+
+    <video id="webcamPreview" class="webcam-preview" autoplay muted></video>
+
+<script>
+let mediaRecorder;
+let recordedChunks = [];
+let stream;
+let audioStream;
+let webcamStream;
+
+const startBtn = document.getElementById('startBtn');
+const stopBtn = document.getElementById('stopBtn');
+const downloadBtn = document.getElementById('downloadBtn');
+const videoPlayer = document.getElementById('videoPlayer');
+const status = document.getElementById('status');
+const recordingModal = document.getElementById('recordingModal');
+const enableAudioCheck = document.getElementById('enableAudio');
+const enableWebcamCheck = document.getElementById('enableWebcam');
+const microphoneSelect = document.getElementById('microphoneSelect');
+const webcamSelect = document.getElementById('webcamSelect');
+const startRecordingBtn = document.getElementById('startRecording');
+const cancelRecordingBtn = document.getElementById('cancelRecording');
+const webcamPreview = document.getElementById('webcamPreview');
+
+async function loadDevices() {
+    try {
+        // First request permissions to ensure we get labeled devices
+        await navigator.mediaDevices.getUserMedia({ audio: true, video: true })
+            .catch(err => console.log('Initial permission request:', err));
+            
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        
+        // Load microphones
+        const audioDevices = devices.filter(device => device.kind === 'audioinput');
+        microphoneSelect.innerHTML = '';
+        microphoneSelect.disabled = !enableAudioCheck.checked;
+        audioDevices.forEach(device => {
+            const option = document.createElement('option');
+            option.value = device.deviceId;
+            option.text = device.label || `Micrófono ${microphoneSelect.options.length + 1}`;
+            microphoneSelect.appendChild(option);
+        });
+
+        // Load webcams
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        webcamSelect.innerHTML = '';
+        webcamSelect.disabled = !enableWebcamCheck.checked;
+        videoDevices.forEach(device => {
+            const option = document.createElement('option');
+            option.value = device.deviceId;
+            option.text = device.label || `Cámara ${webcamSelect.options.length + 1}`;
+            webcamSelect.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error al cargar dispositivos:', error);
+    }
+}
+
+async function requestPictureInPicture() {
+    try {
+        if (document.pictureInPictureEnabled && webcamPreview.srcObject) {
+            if (document.pictureInPictureElement !== webcamPreview) {
+                await webcamPreview.requestPictureInPicture();
+            }
+        }
+    } catch (error) {
+        console.error('Error al activar Picture-in-Picture:', error);
+    }
+}
+
+async function startRecording() {
+    try {
+        // Get screen stream with system audio
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({
+            video: { cursor: "always" },
+            audio: true
+        }).catch(error => {
+            throw new Error('No se pudo acceder a la pantalla: ' + error.message);
+        });
+
+        let finalStream = screenStream;
+
+        try {
+            // Initialize audio context and destination for mixing
+            const audioContext = new AudioContext();
+            const destination = audioContext.createMediaStreamDestination();
+
+            // Add system audio to the mix if available
+            const systemAudioTracks = screenStream.getAudioTracks();
+            if (systemAudioTracks.length > 0) {
+                const systemAudio = audioContext.createMediaStreamSource(screenStream);
+                systemAudio.connect(destination);
+            }
+
+            // If microphone is enabled, add it to the mix
+            if (enableAudioCheck.checked) {
+                try {
+                    const micStream = await navigator.mediaDevices.getUserMedia({
+                        audio: {
+                            deviceId: microphoneSelect.value ? {exact: microphoneSelect.value} : undefined
+                        }
+                    });
+                    const micAudio = audioContext.createMediaStreamSource(micStream);
+                    micAudio.connect(destination);
+                } catch (micError) {
+                    console.error('Error al acceder al micrófono:', micError);
+                    status.textContent = 'Error al acceder al micrófono';
+                    throw micError;
+                }
+            }
+
+            // If webcam is enabled, start it
+            if (enableWebcamCheck.checked) {
+                try {
+                    webcamStream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            deviceId: webcamSelect.value ? {exact: webcamSelect.value} : undefined
+                        }
+                    });
+                    webcamPreview.srcObject = webcamStream;
+                    webcamPreview.style.display = 'block';
+                    
+                    // Add Picture-in-Picture request
+                    await requestPictureInPicture().catch(pipError => {
+                        console.warn('No se pudo activar Picture-in-Picture:', pipError);
+                        // Continue without PiP if it fails
+                    });
+                } catch (webcamError) {
+                    console.error('Error al acceder a la webcam:', webcamError);
+                    status.textContent = 'Error al acceder a la webcam';
+                    throw webcamError;
+                }
+            }
+
+            // Combine all tracks
+            const tracks = [
+                ...screenStream.getVideoTracks(),
+                ...destination.stream.getTracks()
+            ];
+            finalStream = new MediaStream(tracks);
+
+        } catch (error) {
+            // If there's an error with audio/webcam, stop screen sharing
+            screenStream.getTracks().forEach(track => track.stop());
+            throw error;
+        }
+
+        // Create MediaRecorder with error handling
+        try {
+            mediaRecorder = new MediaRecorder(finalStream, {
+                mimeType: 'video/webm'
+            });
+        } catch (mediaRecorderError) {
+            finalStream.getTracks().forEach(track => track.stop());
+            throw new Error('Error al crear MediaRecorder: ' + mediaRecorderError.message);
+        }
+
+        mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                recordedChunks.push(event.data);
+            }
+        };
+
+        mediaRecorder.onerror = (event) => {
+            console.error('Error en MediaRecorder:', event.error);
+            status.textContent = 'Error durante la grabación';
+            stopRecording();
+        };
+
+        mediaRecorder.onstop = () => {
+            try {
+                // Create blob with explicit mime type
+                const blob = new Blob(recordedChunks, {
+                    type: 'video/webm;codecs=vp8,opus'
+                });
+                
+                // Revoke any existing object URL to prevent memory leaks
+                if (videoPlayer.src) {
+                    URL.revokeObjectURL(videoPlayer.src);
+                }
+                
+                // Create and set new object URL
+                const videoURL = URL.createObjectURL(blob);
+                videoPlayer.src = videoURL;
+                
+                // Ensure video player is visible and loaded
+                videoPlayer.style.display = 'block';
+                videoPlayer.load(); // Force reload of video element
+                
+                // Enable controls and update UI
+                downloadBtn.disabled = false;
+                status.textContent = 'Grabación completada';
+                startBtn.disabled = false;
+                startBtn.classList.remove('recording');
+                
+                // Stop all tracks
+                finalStream.getTracks().forEach(track => track.stop());
+                if (webcamStream) {
+                    webcamStream.getTracks().forEach(track => track.stop());
+                    webcamPreview.style.display = 'none';
+                }
+                
+                // Exit Picture-in-Picture if active
+                if (document.pictureInPictureElement) {
+                    document.exitPictureInPicture();
+                }
+            } catch (error) {
+                console.error('Error al procesar la grabación:', error);
+                status.textContent = 'Error al procesar el video';
+            }
+        };
+
+        recordedChunks = [];
+        mediaRecorder.start();
+        status.textContent = 'Grabando...';
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+        downloadBtn.disabled = true;
+        startBtn.classList.add('recording');
+        videoPlayer.style.display = 'none';
+        recordingModal.style.display = 'none';
+
+    } catch (error) {
+        console.error('Error al iniciar la grabación:', error);
+        status.textContent = 'Error: ' + error.message;
+        recordingModal.style.display = 'none';
+        startBtn.disabled = false;
+        startBtn.classList.remove('recording');
+        
+        // Ensure all streams are properly cleaned up
+        if (webcamStream) {
+            webcamStream.getTracks().forEach(track => track.stop());
+            webcamPreview.style.display = 'none';
+        }
+    }
+}
+
+// Add this helper function to stop recording
+function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+    }
+    stopBtn.disabled = true;
+}
+
+startBtn.addEventListener('click', async () => {
+    await loadDevices();
+    recordingModal.style.display = 'flex';
+});
+
+startRecordingBtn.addEventListener('click', startRecording);
+
+cancelRecordingBtn.addEventListener('click', () => {
+    recordingModal.style.display = 'none';
+});
+
+stopBtn.addEventListener('click', stopRecording);
+
+downloadBtn.addEventListener('click', () => {
+    const blob = new Blob(recordedChunks, {
+        type: 'video/webm;codecs=vp8,opus'
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    document.body.appendChild(a);
+    a.style.display = 'none';
+    a.href = url;
+    a.download = 'grabacion-pantalla.webm';
+    a.click();
+    URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    status.textContent = 'Video descargado';
+});
+
+// Add event listener for video player error
+videoPlayer.addEventListener('error', (e) => {
+    console.error('Error en la reproducción del video:', videoPlayer.error);
+    status.textContent = 'Error al reproducir el video';
+});
+
+// Add event listener for visibility change
+document.addEventListener('visibilitychange', async () => {
+    if (document.hidden && webcamPreview.style.display === 'block') {
+        await requestPictureInPicture();
+    }
+});
+
+// Event listeners for enabling/disabling microphone and webcam selection
+enableAudioCheck.addEventListener('change', (e) => {
+    microphoneSelect.disabled = !e.target.checked;
+});
+
+enableWebcamCheck.addEventListener('change', (e) => {
+    webcamSelect.disabled = !e.target.checked;
+});
+</script>
+</body></html>
